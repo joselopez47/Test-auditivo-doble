@@ -221,13 +221,10 @@
         return 50;
     }
 
-    // SINCRONIZACIÓN PERFECTA: Convierte la frecuencia exponencial exacta a su ángulo gráfico correspondiente
+    // Convierte cualquier frecuencia matemática al ángulo visual correcto de la perilla
     function actualizarPerillaPorFrecuencia(hz) {
-        // Obtenemos el porcentaje exponencial inverso
         let porcentaje = Math.log(hz / 20) / Math.log(22000 / 20);
-        // Mapeamos ese porcentaje al rango de movimiento útil (de 45 a 315 grados ajustados)
         let anguloAjustado = porcentaje * (315 - 45) + 45;
-        // Convertimos al ángulo del plano cartesiano estándar que usa la función dibujarPerilla
         let anguloDeg = (270 - anguloAjustado) % 360;
         dibujarPerilla(anguloDeg);
     }
@@ -250,15 +247,15 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const cx = 125, cy = 125;
         
-        // Círculos base
+        // Círculos base de la consola
         ctx.beginPath(); ctx.arc(cx, cy, 90, 0, 2 * Math.PI); ctx.fillStyle = "#2D2D2D"; ctx.fill();
         ctx.lineWidth = 4; ctx.strokeStyle = "#4B5563"; ctx.stroke();
         ctx.beginPath(); ctx.arc(cx, cy, 75, 0, 2 * Math.PI); ctx.fillStyle = "#1F2937"; ctx.fill();
 
-        // Línea indicadora
+        // Conversión y Renderizado de la línea indicadora azul
         const rad = (anguloDeg * Math.PI) / 180;
-        const lx = cx + 85 * Math.cos(rad);
-        const ly = cy - 85 * Math.sin(rad);
+        const lx = cx + 70 * Math.cos(rad);
+        const ly = cy + 70 * Math.sin(rad); // Corregido el signo para sincronizar el cuadrante HTML5
 
         ctx.beginPath();
         ctx.moveTo(cx, cy);
@@ -268,7 +265,7 @@
         ctx.stroke();
     }
 
-    // Lógica Unificada de Movimiento (Mouse y Touch)
+    // Lógica Unificada de Movimiento (Mouse y Arrastre Táctil)
     function procesarMovimiento(e) {
         const rect = canvas.getBoundingClientRect();
         
@@ -289,14 +286,19 @@
         
         const cx = 125, cy = 125;
         const dx = x - cx;
-        const dy = cy - y;
+        const dy = y - cy; // Sincronizado nativamente con el origen del Canvas
 
         let anguloRad = Math.atan2(dy, dx);
         let anguloDeg = anguloRad * (180 / Math.PI);
-        let anguloAjustado = (270 - anguloDeg) % 360;
+        
+        // Normalizamos el ángulo entre 0 y 360 grados
+        if (anguloDeg < 0) anguloDeg += 360;
 
-        if (anguloAjustado >= 45 && anguloAjustado <= 315) {
-            let porcentaje = (anguloAjustado - 45) / (315 - 45);
+        // Mapeo útil de la perilla (restringiendo la zona muerta inferior de 45° a 135°)
+        let anguloAjustado = (anguloDeg - 135 + 360) % 360;
+
+        if (anguloAjustado <= 270) {
+            let porcentaje = anguloAjustado / 270;
             frecuenciaActual = Math.floor(20 * Math.pow((22000 / 20), porcentaje));
             frecuenciaActual = Math.max(20, Math.min(22000, frecuenciaActual));
 
@@ -317,7 +319,7 @@
         actualizarPerillaPorFrecuencia(frecuenciaActual);
     }
 
-    // Funciones botones +/- 100 Hz sincronizados de forma nativa
+    // Funciones de botones de ajuste fino (+/- 100 Hz)
     btnMenos.addEventListener('click', () => {
         frecuenciaActual = Math.max(20, frecuenciaActual - 100);
         actualizarInterfazFina();
@@ -328,18 +330,18 @@
         actualizarInterfazFina();
     });
 
-    // Eventos de interacción perilla (Mouse)
+    // Eventos de ratón
     let activo = false;
-    canvas.addEventListener('mousedown', () => activo = true);
+    canvas.addEventListener('mousedown', (e) => { activo = true; procesarMovimiento(e); });
     window.addEventListener('mouseup', () => activo = false);
     canvas.addEventListener('mousemove', (e) => { if(activo) { e.preventDefault(); procesarMovimiento(e); } });
     canvas.addEventListener('click', (e) => { procesarMovimiento(e); });
     
-    // Eventos de interacción perilla (Táctil)
+    // Eventos táctiles
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
 
-    // Control de Audio
+    // Control de la Web Audio API
     btnEscuchar.addEventListener('click', () => {
         if (!reproduciendo) {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -377,7 +379,7 @@
         }
     }
 
-    // Procesar resultados de voluntarios
+    // Procesar resultados de los voluntarios
     function procesarVoluntario(num) {
         detenerAudio();
         lblEstado.innerHTML = `Calculando Voluntario ${num}...`;
@@ -398,7 +400,7 @@
     btnVol1.addEventListener('click', () => procesarVoluntario(1));
     btnVol2.addEventListener('click', () => procesarVoluntario(2));
 
-    // Inicializar perilla en frecuencia base estable (12000 Hz)
+    // Inicializar renderizado gráfico inicial estable (12000 Hz)
     actualizarPerillaPorFrecuencia(frecuenciaActual);
 </script>
 </body>
