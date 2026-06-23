@@ -44,7 +44,122 @@
         h2 { font-size: 22px; margin-bottom: 5px; color: #F3F4F6; text-align: center;}
         p.subtitle { color: #9CA3AF; font-size: 12px; margin-bottom: 20px; text-align: center; }
         
-               <canvas id="canvasPerilla" width="250" height="250" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
+        /* Canvas Perilla */
+        #canvasPerilla {
+            background-color: #1D1D1D;
+            cursor: pointer;
+        }
+        
+        /* Contenedor del Display con Botones +/- */
+        .freq-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .btn-step {
+            background-color: #374151;
+            color: #F3F4F6;
+            width: 50px;
+            padding: 8px 0;
+            font-size: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+            user-select: none;
+        }
+        .btn-step:hover { background-color: #4B5563; }
+        
+        .freq-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3B82F6;
+            min-width: 130px;
+            text-align: center;
+            user-select: none;
+        }
+        button {
+            width: 260px;
+            padding: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+        .btn-audio { background-color: #3B82F6; color: white; }
+        .btn-audio.active { background-color: #EF4444; }
+        
+        /* Botones de acción divididos */
+        .actions-container {
+            display: flex;
+            gap: 10px;
+            width: 300px;
+            justify-content: center;
+        }
+        .btn-action {
+            background-color: #10B981;
+            color: white;
+            flex: 1;
+            font-size: 13px;
+            padding: 12px 5px;
+        }
+        .btn-action:hover { background-color: #059669; }
+        
+        .status-lbl {
+            color: #94A3B8;
+            font-style: italic;
+            font-size: 13px;
+            text-align: center;
+            height: 40px;
+            margin: 15px 0;
+        }
+        
+        /* Pantalla LED dividida en dos secciones */
+        .led-screen {
+            background-color: #0F172A;
+            width: 300px;
+            height: 120px;
+            border-radius: 10px;
+            display: flex;
+        }
+        .led-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 14px;
+            color: #94A3B8;
+        }
+        .led-section:first-child {
+            border-right: 1px solid #1E293B;
+        }
+        .led-val {
+            font-size: 22px;
+            font-weight: bold;
+            color: #F8FAFC;
+            margin-top: 5px;
+        }
+        
+        .separator {
+            width: 260px;
+            height: 2px;
+            background-color: #334155;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="col-left">
+        <h2>Generador de Tonos Dinámico</h2>
+        <p class="subtitle">Arrastrá el mouse / dedo para sintonizar las frecuencias:</p>
+        <canvas id="canvasPerilla" width="250" height="250" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
         
         <div class="freq-container">
             <button class="btn-step" id="btnMenos">-100Hz</button>
@@ -106,10 +221,13 @@
         return 50;
     }
 
-    // Convertir frecuencia a ángulo gráfico inverso para la perilla
-    function actualizarAnguloPorFrecuencia(hz) {
+    // SINCRONIZACIÓN PERFECTA: Convierte la frecuencia exponencial exacta a su ángulo gráfico correspondiente
+    function actualizarPerillaPorFrecuencia(hz) {
+        // Obtenemos el porcentaje exponencial inverso
         let porcentaje = Math.log(hz / 20) / Math.log(22000 / 20);
+        // Mapeamos ese porcentaje al rango de movimiento útil (de 45 a 315 grados ajustados)
         let anguloAjustado = porcentaje * (315 - 45) + 45;
+        // Convertimos al ángulo del plano cartesiano estándar que usa la función dibujarPerilla
         let anguloDeg = (270 - anguloAjustado) % 360;
         dibujarPerilla(anguloDeg);
     }
@@ -150,11 +268,10 @@
         ctx.stroke();
     }
 
-    // Lógica Unificada de Mouse y Toque Táctil
+    // Lógica Unificada de Movimiento (Mouse y Touch)
     function procesarMovimiento(e) {
         const rect = canvas.getBoundingClientRect();
         
-        // Detectar si es un evento táctil (touch) o de mouse
         let clienteX, clienteY;
         if (e.touches && e.touches.length > 0) {
             clienteX = e.touches[0].clientX;
@@ -183,28 +300,32 @@
             frecuenciaActual = Math.floor(20 * Math.pow((22000 / 20), porcentaje));
             frecuenciaActual = Math.max(20, Math.min(22000, frecuenciaActual));
 
-            actualizarInterfaz();
+            lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
+            dibujarPerilla(anguloDeg);
+            
+            if (oscillator && reproduciendo) {
+                oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
+            }
         }
     }
 
-    function actualizarInterfaz() {
+    function actualizarInterfazFina() {
         lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
         if (oscillator && reproduciendo) {
             oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
         }
+        actualizarPerillaPorFrecuencia(frecuenciaActual);
     }
 
-    // Funciones botones +/- 100 Hz
+    // Funciones botones +/- 100 Hz sincronizados de forma nativa
     btnMenos.addEventListener('click', () => {
         frecuenciaActual = Math.max(20, frecuenciaActual - 100);
-        actualizarInterfaz();
-        actualizarAnguloPorFrecuencia(frecuenciaActual);
+        actualizarInterfazFina();
     });
 
     btnMas.addEventListener('click', () => {
         frecuenciaActual = Math.min(22000, frecuenciaActual + 100);
-        actualizarInterfaz();
-        actualizarAnguloPorFrecuencia(frecuenciaActual);
+        actualizarInterfazFina();
     });
 
     // Eventos de interacción perilla (Mouse)
@@ -212,20 +333,11 @@
     canvas.addEventListener('mousedown', () => activo = true);
     window.addEventListener('mouseup', () => activo = false);
     canvas.addEventListener('mousemove', (e) => { if(activo) { e.preventDefault(); procesarMovimiento(e); } });
-    canvas.addEventListener('click', (e) => { procesarMovimiento(e); actualizarAnguloPorFrecuencia(frecuenciaActual); });
+    canvas.addEventListener('click', (e) => { procesarMovimiento(e); });
     
-    // Eventos de interacción perilla (Táctil / Mobile)
-    canvas.addEventListener('touchstart', (e) => { 
-        e.preventDefault(); 
-        procesarMovimiento(e); 
-        actualizarAnguloPorFrecuencia(frecuenciaActual); 
-    }, {passive: false});
-    
-    canvas.addEventListener('touchmove', (e) => { 
-        e.preventDefault(); 
-        procesarMovimiento(e); 
-        actualizarAnguloPorFrecuencia(frecuenciaActual); 
-    }, {passive: false});
+    // Eventos de interacción perilla (Táctil)
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
 
     // Control de Audio
     btnEscuchar.addEventListener('click', () => {
@@ -265,7 +377,7 @@
         }
     }
 
-    // Procesar resultados de voluntarios individuales
+    // Procesar resultados de voluntarios
     function procesarVoluntario(num) {
         detenerAudio();
         lblEstado.innerHTML = `Calculando Voluntario ${num}...`;
@@ -286,8 +398,8 @@
     btnVol1.addEventListener('click', () => procesarVoluntario(1));
     btnVol2.addEventListener('click', () => procesarVoluntario(2));
 
-    // Inicializar perilla en frecuencia base
-    actualizarAnguloPorFrecuencia(frecuenciaActual);
+    // Inicializar perilla en frecuencia base estable (12000 Hz)
+    actualizarPerillaPorFrecuencia(frecuenciaActual);
 </script>
 </body>
 </html>
