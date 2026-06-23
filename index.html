@@ -44,120 +44,7 @@
         h2 { font-size: 22px; margin-bottom: 5px; color: #F3F4F6; text-align: center;}
         p.subtitle { color: #9CA3AF; font-size: 12px; margin-bottom: 20px; text-align: center; }
         
-        /* Canvas Perilla */
-        #canvasPerilla {
-            background-color: #1D1D1D;
-            cursor: pointer;
-        }
-        
-        /* Contenedor del Display con Botones +/- */
-        .freq-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            margin: 15px 0;
-        }
-        .btn-step {
-            background-color: #374151;
-            color: #F3F4F6;
-            width: 50px;
-            padding: 8px 0;
-            font-size: 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            border: none;
-        }
-        .btn-step:hover { background-color: #4B5563; }
-        
-        .freq-display {
-            font-size: 24px;
-            font-weight: bold;
-            color: #3B82F6;
-            min-width: 130px;
-            text-align: center;
-        }
-        button {
-            width: 260px;
-            padding: 12px;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: background 0.2s;
-            font-size: 14px;
-        }
-        .btn-audio { background-color: #3B82F6; color: white; }
-        .btn-audio.active { background-color: #EF4444; }
-        
-        /* Botones de acción divididos */
-        .actions-container {
-            display: flex;
-            gap: 10px;
-            width: 300px;
-            justify-content: center;
-        }
-        .btn-action {
-            background-color: #10B981;
-            color: white;
-            flex: 1;
-            font-size: 13px;
-            padding: 12px 5px;
-        }
-        .btn-action:hover { background-color: #059669; }
-        
-        .status-lbl {
-            color: #94A3B8;
-            font-style: italic;
-            font-size: 13px;
-            text-align: center;
-            height: 40px;
-            margin: 15px 0;
-        }
-        
-        /* Pantalla LED dividida en dos secciones */
-        .led-screen {
-            background-color: #0F172A;
-            width: 300px;
-            height: 120px;
-            border-radius: 10px;
-            display: flex;
-        }
-        .led-section {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            font-size: 14px;
-            color: #94A3B8;
-        }
-        .led-section:first-child {
-            border-right: 1px solid #1E293B;
-        }
-        .led-val {
-            font-size: 22px;
-            font-weight: bold;
-            color: #F8FAFC;
-            margin-top: 5px;
-        }
-        
-        .separator {
-            width: 260px;
-            height: 2px;
-            background-color: #334155;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-
-<div class="container">
-    <div class="col-left">
-        <h2>Generador de Tonos Dinámico</h2>
-        <p class="subtitle">Arrastrá el mouse / dedo para sintonizar las frecuencias:</p>
-        <canvas id="canvasPerilla" width="250" height="250"></canvas>
+               <canvas id="canvasPerilla" width="250" height="250" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
         
         <div class="freq-container">
             <button class="btn-step" id="btnMenos">-100Hz</button>
@@ -263,11 +150,25 @@
         ctx.stroke();
     }
 
-    // Lógica del Mouse / Movimiento
+    // Lógica Unificada de Mouse y Toque Táctil
     function procesarMovimiento(e) {
         const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX || e.touches[0].clientX) - rect.left;
-        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        
+        // Detectar si es un evento táctil (touch) o de mouse
+        let clienteX, clienteY;
+        if (e.touches && e.touches.length > 0) {
+            clienteX = e.touches[0].clientX;
+            clienteY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clienteX = e.changedTouches[0].clientX;
+            clienteY = e.changedTouches[0].clientY;
+        } else {
+            clienteX = e.clientX;
+            clienteY = e.clientY;
+        }
+
+        const x = clienteX - rect.left;
+        const y = clienteY - rect.top;
         
         const cx = 125, cy = 125;
         const dx = x - cx;
@@ -306,13 +207,25 @@
         actualizarAnguloPorFrecuencia(frecuenciaActual);
     });
 
-    // Eventos de interacción perilla
+    // Eventos de interacción perilla (Mouse)
     let activo = false;
     canvas.addEventListener('mousedown', () => activo = true);
     window.addEventListener('mouseup', () => activo = false);
-    canvas.addEventListener('mousemove', (e) => { if(activo) procesarMovimiento(e); });
+    canvas.addEventListener('mousemove', (e) => { if(activo) { e.preventDefault(); procesarMovimiento(e); } });
     canvas.addEventListener('click', (e) => { procesarMovimiento(e); actualizarAnguloPorFrecuencia(frecuenciaActual); });
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
+    
+    // Eventos de interacción perilla (Táctil / Mobile)
+    canvas.addEventListener('touchstart', (e) => { 
+        e.preventDefault(); 
+        procesarMovimiento(e); 
+        actualizarAnguloPorFrecuencia(frecuenciaActual); 
+    }, {passive: false});
+    
+    canvas.addEventListener('touchmove', (e) => { 
+        e.preventDefault(); 
+        procesarMovimiento(e); 
+        actualizarAnguloPorFrecuencia(frecuenciaActual); 
+    }, {passive: false});
 
     // Control de Audio
     btnEscuchar.addEventListener('click', () => {
