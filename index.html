@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Auditivo - Escáner en Tiempo Real</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #F3F4F6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            display: flex;
+            width: 800px;
+            height: 600px;
+            background-color: #1D1D1D;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .col-left {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .col-right {
+            flex: 1;
+            background-color: #1E293B;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        h2 { font-size: 22px; margin-bottom: 5px; color: #F3F4F6; text-align: center;}
+        p.subtitle { color: #9CA3AF; font-size: 12px; margin-bottom: 20px; text-align: center; }
+        
+        /* Canvas Perilla */
+        #canvasPerilla {
+            background-color: #1D1D1D;
+            cursor: pointer;
+        }
+        
+        /* Contenedor del Display con Botones +/- */
+        .freq-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .btn-step {
+            background-color: #374151;
+            color: #F3F4F6;
+            width: 50px;
+            padding: 8px 0;
+            font-size: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-step:hover { background-color: #4B5563; }
+        
+        .freq-display {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3B82F6;
+            min-width: 130px;
+            text-align: center;
+        }
+        button {
+            width: 260px;
+            padding: 12px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 14px;
+        }
+        .btn-audio { background-color: #3B82F6; color: white; }
+        .btn-audio.active { background-color: #EF4444; }
+        
+        /* Botones de acción divididos */
+        .actions-container {
+            display: flex;
+            gap: 10px;
+            width: 300px;
+            justify-content: center;
+        }
+        .btn-action {
+            background-color: #10B981;
+            color: white;
+            flex: 1;
+            font-size: 13px;
+            padding: 12px 5px;
+        }
+        .btn-action:hover { background-color: #059669; }
+        
+        .status-lbl {
+            color: #94A3B8;
+            font-style: italic;
+            font-size: 13px;
+            text-align: center;
+            height: 40px;
+            margin: 15px 0;
+        }
+        
+        /* Pantalla LED dividida en dos secciones */
+        .led-screen {
+            background-color: #0F172A;
+            width: 300px;
+            height: 120px;
+            border-radius: 10px;
+            display: flex;
+        }
+        .led-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            font-size: 14px;
+            color: #94A3B8;
+        }
+        .led-section:first-child {
+            border-right: 1px solid #1E293B;
+        }
+        .led-val {
+            font-size: 22px;
+            font-weight: bold;
+            color: #F8FAFC;
+            margin-top: 5px;
+        }
+        
+        .separator {
+            width: 260px;
+            height: 2px;
+            background-color: #334155;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="col-left">
+        <h2>Generador de Tonos Dinámico</h2>
+        <p class="subtitle">Arrastrá el mouse / dedo para sintonizar las frecuencias:</p>
+        <canvas id="canvasPerilla" width="250" height="250"></canvas>
+        
+        <div class="freq-container">
+            <button class="btn-step" id="btnMenos">-100Hz</button>
+            <div class="freq-display" id="lblFrecuencia">12000 Hz</div>
+            <button class="btn-step" id="btnMas">+100Hz</button>
+        </div>
+        
+        <button class="btn-audio" id="btnEscuchar">▶ Encender Tono Continuo</button>
+    </div>
+
+    <div class="col-right">
+        <h2 style="color: #38BDF8;">Consola de Análisis</h2>
+        
+        <div class="actions-container">
+            <button class="btn-action" id="btnVol1">Voluntario 1<br>[ Sí lo escucho ]</button>
+            <button class="btn-action" id="btnVol2" style="background-color: #0EA5E9; hover: background-color: #0284C7;">Voluntario 2<br>[ Sí lo escucho ]</button>
+        </div>
+        
+        <div class="status-lbl" id="lblEstado">Encendé el tono y mové la perilla<br>para escanear tu oído.</div>
+        <div class="separator"></div>
+        
+        <div class="led-screen">
+            <div class="led-section">
+                <span>Voluntario 1</span>
+                <div class="led-val" id="resVol1">--</div>
+            </div>
+            <div class="led-section">
+                <span>Voluntario 2</span>
+                <div class="led-val" id="resVol2">--</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Variables de Estado
+    let reproduciendo = false;
+    let frecuenciaActual = 12000;
+    
+    // Web Audio API
+    let audioCtx = null;
+    let oscillator = null;
+    let gainNode = null;
+
+    // Interpolación Matemática
+    const FRECUENCIAS_REFE = [20, 250, 8000, 12000, 15000, 16000, 17400, 19000, 20000, 22000];
+    const EDADES_REFE      = [90.0, 80.0, 70.0, 50.0, 40.0, 30.0, 25.0, 22.0, 20.0, 18.0];
+
+    function calcularEdadAuditiva(hz) {
+        if (hz <= FRECUENCIAS_REFE[0]) return EDADES_REFE[0];
+        if (hz >= FRECUENCIAS_REFE[FRECUENCIAS_REFE.length - 1]) return EDADES_REFE[EDADES_REFE.length - 1];
+        
+        for (let i = 0; i < FRECUENCIAS_REFE.length - 1; i++) {
+            if (hz >= FRECUENCIAS_REFE[i] && hz <= FRECUENCIAS_REFE[i+1]) {
+                let t = (hz - FRECUENCIAS_REFE[i]) / (FRECUENCIAS_REFE[i+1] - FRECUENCIAS_REFE[i]);
+                return (EDADES_REFE[i] + t * (EDADES_REFE[i+1] - EDADES_REFE[i])).toFixed(1);
+            }
+        }
+        return 50;
+    }
+
+    // Convertir frecuencia a ángulo gráfico inverso para la perilla
+    function actualizarAnguloPorFrecuencia(hz) {
+        let porcentaje = Math.log(hz / 20) / Math.log(22000 / 20);
+        let anguloAjustado = porcentaje * (315 - 45) + 45;
+        let anguloDeg = (270 - anguloAjustado) % 360;
+        dibujarPerilla(anguloDeg);
+    }
+
+    // Elementos DOM
+    const canvas = document.getElementById('canvasPerilla');
+    const ctx = canvas.getContext('2d');
+    const lblFrecuencia = document.getElementById('lblFrecuencia');
+    const btnEscuchar = document.getElementById('btnEscuchar');
+    const btnVol1 = document.getElementById('btnVol1');
+    const btnVol2 = document.getElementById('btnVol2');
+    const btnMenos = document.getElementById('btnMenos');
+    const btnMas = document.getElementById('btnMas');
+    const lblEstado = document.getElementById('lblEstado');
+    const resVol1 = document.getElementById('resVol1');
+    const resVol2 = document.getElementById('resVol2');
+
+    // Dibujo de la Perilla
+    function dibujarPerilla(anguloDeg) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const cx = 125, cy = 125;
+        
+        // Círculos base
+        ctx.beginPath(); ctx.arc(cx, cy, 90, 0, 2 * Math.PI); ctx.fillStyle = "#2D2D2D"; ctx.fill();
+        ctx.lineWidth = 4; ctx.strokeStyle = "#4B5563"; ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, cy, 75, 0, 2 * Math.PI); ctx.fillStyle = "#1F2937"; ctx.fill();
+
+        // Línea indicadora
+        const rad = (anguloDeg * Math.PI) / 180;
+        const lx = cx + 85 * Math.cos(rad);
+        const ly = cy - 85 * Math.sin(rad);
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(lx, ly);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = "#3B82F6";
+        ctx.stroke();
+    }
+
+    // Lógica del Mouse / Movimiento
+    function procesarMovimiento(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+        
+        const cx = 125, cy = 125;
+        const dx = x - cx;
+        const dy = cy - y;
+
+        let anguloRad = Math.atan2(dy, dx);
+        let anguloDeg = anguloRad * (180 / Math.PI);
+        let anguloAjustado = (270 - anguloDeg) % 360;
+
+        if (anguloAjustado >= 45 && anguloAjustado <= 315) {
+            let porcentaje = (anguloAjustado - 45) / (315 - 45);
+            frecuenciaActual = Math.floor(20 * Math.pow((22000 / 20), porcentaje));
+            frecuenciaActual = Math.max(20, Math.min(22000, frecuenciaActual));
+
+            actualizarInterfaz();
+        }
+    }
+
+    function actualizarInterfaz() {
+        lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
+        if (oscillator && reproduciendo) {
+            oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
+        }
+    }
+
+    // Funciones botones +/- 100 Hz
+    btnMenos.addEventListener('click', () => {
+        frecuenciaActual = Math.max(20, frecuenciaActual - 100);
+        actualizarInterfaz();
+        actualizarAnguloPorFrecuencia(frecuenciaActual);
+    });
+
+    btnMas.addEventListener('click', () => {
+        frecuenciaActual = Math.min(22000, frecuenciaActual + 100);
+        actualizarInterfaz();
+        actualizarAnguloPorFrecuencia(frecuenciaActual);
+    });
+
+    // Eventos de interacción perilla
+    let activo = false;
+    canvas.addEventListener('mousedown', () => activo = true);
+    window.addEventListener('mouseup', () => activo = false);
+    canvas.addEventListener('mousemove', (e) => { if(activo) procesarMovimiento(e); });
+    canvas.addEventListener('click', (e) => { procesarMovimiento(e); actualizarAnguloPorFrecuencia(frecuenciaActual); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
+
+    // Control de Audio
+    btnEscuchar.addEventListener('click', () => {
+        if (!reproduciendo) {
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            oscillator = audioCtx.createOscillator();
+            gainNode = audioCtx.createGain();
+            
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            oscillator.start();
+
+            reproduciendo = true;
+            btnEscuchar.innerText = "■ Detener Tono";
+            btnEscuchar.classList.add('active');
+            lblEstado.innerHTML = "Tono activo.<br>Girá la perilla para calibrar tu oído.";
+            lblEstado.style.color = "#60A5FA";
+        } else {
+            detenerAudio();
+        }
+    });
+
+    function detenerAudio() {
+        if (reproduciendo) {
+            oscillator.stop();
+            oscillator.disconnect();
+            reproduciendo = false;
+            btnEscuchar.innerText = "▶ Encender Tono Continuo";
+            btnEscuchar.classList.remove('active');
+            lblEstado.innerHTML = "Tono apagado.<br>Consola lista.";
+            lblEstado.style.color = "#6B7280";
+        }
+    }
+
+    // Procesar resultados de voluntarios individuales
+    function procesarVoluntario(num) {
+        detenerAudio();
+        lblEstado.innerHTML = `Calculando Voluntario ${num}...`;
+        lblEstado.style.color = "#A78BFA";
+
+        setTimeout(() => {
+            let edad = calcularEdadAuditiva(frecuenciaActual);
+            if(num === 1) {
+                resVol1.innerHTML = `${edad}<br><span style="font-size:12px;">años</span>`;
+            } else {
+                resVol2.innerHTML = `${edad}<br><span style="font-size:12px;">años</span>`;
+            }
+            lblEstado.innerHTML = "¡Cálculo procesado<br>con éxito!";
+            lblEstado.style.color = "#34D399";
+        }, 300);
+    }
+
+    btnVol1.addEventListener('click', () => procesarVoluntario(1));
+    btnVol2.addEventListener('click', () => procesarVoluntario(2));
+
+    // Inicializar perilla en frecuencia base
+    actualizarAnguloPorFrecuencia(frecuenciaActual);
+</script>
+</body>
+</html>
