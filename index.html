@@ -44,13 +44,11 @@
         h2 { font-size: 22px; margin-bottom: 5px; color: #F3F4F6; text-align: center;}
         p.subtitle { color: #9CA3AF; font-size: 12px; margin-bottom: 20px; text-align: center; }
         
-        /* Canvas Perilla */
         #canvasPerilla {
             background-color: #1D1D1D;
             cursor: pointer;
         }
         
-        /* Contenedor del Display con Botones +/- */
         .freq-container {
             display: flex;
             align-items: center;
@@ -61,7 +59,7 @@
         .btn-step {
             background-color: #374151;
             color: #F3F4F6;
-            width: 50px;
+            width: 60px;
             padding: 8px 0;
             font-size: 12px;
             border-radius: 6px;
@@ -92,7 +90,6 @@
         .btn-audio { background-color: #3B82F6; color: white; }
         .btn-audio.active { background-color: #EF4444; }
         
-        /* Botones de acción divididos */
         .actions-container {
             display: flex;
             gap: 10px;
@@ -117,7 +114,6 @@
             margin: 15px 0;
         }
         
-        /* Pantalla LED dividida en dos secciones */
         .led-screen {
             background-color: #0F172A;
             width: 300px;
@@ -162,9 +158,9 @@
         <canvas id="canvasPerilla" width="250" height="250" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
         
         <div class="freq-container">
-            <button class="btn-step" id="btnMenos">-100Hz</button>
+            <button class="btn-step" id="btnMenos">Anterior</button>
             <div class="freq-display" id="lblFrecuencia">12000 Hz</div>
-            <button class="btn-step" id="btnMas">+100Hz</button>
+            <button class="btn-step" id="btnMas">Siguiente</button>
         </div>
         
         <button class="btn-audio" id="btnEscuchar">▶ Encender Tono Continuo</button>
@@ -195,18 +191,19 @@
 </div>
 
 <script>
-    // Variables de Estado
     let reproduciendo = false;
     let frecuenciaActual = 12000;
     
-    // Web Audio API
     let audioCtx = null;
     let oscillator = null;
     let gainNode = null;
 
-    // Interpolación Matemática
     const FRECUENCIAS_REFE = [20, 250, 8000, 12000, 15000, 16000, 17400, 19000, 20000, 22000];
     const EDADES_REFE      = [90.0, 80.0, 70.0, 50.0, 40.0, 30.0, 25.0, 22.0, 20.0, 18.0];
+
+    // Constantes de escala logarítmica/exponencial unificada
+    const F_MIN = 20;
+    const F_MAX = 22000;
 
     function calcularEdadAuditiva(hz) {
         if (hz <= FRECUENCIAS_REFE[0]) return EDADES_REFE[0];
@@ -221,15 +218,14 @@
         return 50;
     }
 
-    // Convierte cualquier frecuencia matemática al ángulo visual correcto de la perilla
-    function actualizarPerillaPorFrecuencia(hz) {
-        let porcentaje = Math.log(hz / 20) / Math.log(22000 / 20);
-        let anguloAjustado = porcentaje * (315 - 45) + 45;
-        let anguloDeg = (270 - anguloAjustado) % 360;
+    // Traduce con precisión milimétrica los Hz al ángulo visual exacto del Canvas
+    function redibujarPerillaDesdeHz(hz) {
+        let porcentaje = Math.log(hz / F_MIN) / Math.log(F_MAX / F_MIN);
+        let anguloAjustado = porcentaje * 270;
+        let anguloDeg = (anguloAjustado + 135) % 360;
         dibujarPerilla(anguloDeg);
     }
 
-    // Elementos DOM
     const canvas = document.getElementById('canvasPerilla');
     const ctx = canvas.getContext('2d');
     const lblFrecuencia = document.getElementById('lblFrecuencia');
@@ -242,20 +238,17 @@
     const resVol1 = document.getElementById('resVol1');
     const resVol2 = document.getElementById('resVol2');
 
-    // Dibujo de la Perilla
     function dibujarPerilla(anguloDeg) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const cx = 125, cy = 125;
         
-        // Círculos base de la consola
         ctx.beginPath(); ctx.arc(cx, cy, 90, 0, 2 * Math.PI); ctx.fillStyle = "#2D2D2D"; ctx.fill();
         ctx.lineWidth = 4; ctx.strokeStyle = "#4B5563"; ctx.stroke();
         ctx.beginPath(); ctx.arc(cx, cy, 75, 0, 2 * Math.PI); ctx.fillStyle = "#1F2937"; ctx.fill();
 
-        // Conversión y Renderizado de la línea indicadora azul
         const rad = (anguloDeg * Math.PI) / 180;
         const lx = cx + 70 * Math.cos(rad);
-        const ly = cy + 70 * Math.sin(rad); // Corregido el signo para sincronizar el cuadrante HTML5
+        const ly = cy + 70 * Math.sin(rad);
 
         ctx.beginPath();
         ctx.moveTo(cx, cy);
@@ -265,17 +258,22 @@
         ctx.stroke();
     }
 
-    // Lógica Unificada de Movimiento (Mouse y Arrastre Táctil)
+    // Audio Progresivo sin micro-cortes utilizando rampas exponenciales
+    function actualizarFrecuenciaAudio(hz) {
+        if (oscillator && reproduciendo) {
+            // Evitamos saltos discretos limpiando eventos previos y aplicando una rampa ultrasuave en 0.03 segundos
+            oscillator.frequency.cancelScheduledValues(audioCtx.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(hz, audioCtx.currentTime + 0.03);
+        }
+    }
+
     function procesarMovimiento(e) {
         const rect = canvas.getBoundingClientRect();
-        
         let clienteX, clienteY;
+        
         if (e.touches && e.touches.length > 0) {
             clienteX = e.touches[0].clientX;
             clienteY = e.touches[0].clientY;
-        } else if (e.changedTouches && e.changedTouches.length > 0) {
-            clienteX = e.changedTouches[0].clientX;
-            clienteY = e.changedTouches[0].clientY;
         } else {
             clienteX = e.clientX;
             clienteY = e.clientY;
@@ -286,62 +284,51 @@
         
         const cx = 125, cy = 125;
         const dx = x - cx;
-        const dy = y - cy; // Sincronizado nativamente con el origen del Canvas
+        const dy = y - cy;
 
-        let anguloRad = Math.atan2(dy, dx);
-        let anguloDeg = anguloRad * (180 / Math.PI);
-        
-        // Normalizamos el ángulo entre 0 y 360 grados
+        let anguloDeg = Math.atan2(dy, dx) * (180 / Math.PI);
         if (anguloDeg < 0) anguloDeg += 360;
 
-        // Mapeo útil de la perilla (restringiendo la zona muerta inferior de 45° a 135°)
         let anguloAjustado = (anguloDeg - 135 + 360) % 360;
 
         if (anguloAjustado <= 270) {
             let porcentaje = anguloAjustado / 270;
-            frecuenciaActual = Math.floor(20 * Math.pow((22000 / 20), porcentaje));
-            frecuenciaActual = Math.max(20, Math.min(22000, frecuenciaActual));
+            frecuenciaActual = Math.floor(F_MIN * Math.pow((F_MAX / F_MIN), porcentaje));
+            frecuenciaActual = Math.max(F_MIN, Math.min(F_MAX, frecuenciaActual));
 
             lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
             dibujarPerilla(anguloDeg);
-            
-            if (oscillator && reproduciendo) {
-                oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
-            }
+            actualizarFrecuenciaAudio(frecuenciaActual);
         }
     }
 
-    function actualizarInterfazFina() {
-        lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
-        if (oscillator && reproduciendo) {
-            oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
-        }
-        actualizarPerillaPorFrecuencia(frecuenciaActual);
-    }
-
-    // Funciones de botones de ajuste fino (+/- 100 Hz)
+    // Ajuste Fino Exponencial Constante (Evita descalibraciones en toda la curva gráfica)
+    // El paso de 1.05 incrementa/decrementa de forma proporcional y adaptativa según el rango
     btnMenos.addEventListener('click', () => {
-        frecuenciaActual = Math.max(20, frecuenciaActual - 100);
-        actualizarInterfazFina();
+        frecuenciaActual = Math.floor(frecuenciaActual / 1.05);
+        frecuenciaActual = Math.max(F_MIN, frecuenciaActual);
+        lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
+        redibujarPerillaDesdeHz(frecuenciaActual);
+        actualizarFrecuenciaAudio(frecuenciaActual);
     });
 
     btnMas.addEventListener('click', () => {
-        frecuenciaActual = Math.min(22000, frecuenciaActual + 100);
-        actualizarInterfazFina();
+        frecuenciaActual = Math.floor(frecuenciaActual * 1.05);
+        frecuenciaActual = Math.min(F_MAX, frecuenciaActual);
+        lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
+        redibujarPerillaDesdeHz(frecuenciaActual);
+        actualizarFrecuenciaAudio(frecuenciaActual);
     });
 
-    // Eventos de ratón
     let activo = false;
     canvas.addEventListener('mousedown', (e) => { activo = true; procesarMovimiento(e); });
     window.addEventListener('mouseup', () => activo = false);
     canvas.addEventListener('mousemove', (e) => { if(activo) { e.preventDefault(); procesarMovimiento(e); } });
     canvas.addEventListener('click', (e) => { procesarMovimiento(e); });
     
-    // Eventos táctiles
     canvas.addEventListener('touchstart', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
     canvas.addEventListener('touchmove', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
 
-    // Control de la Web Audio API
     btnEscuchar.addEventListener('click', () => {
         if (!reproduciendo) {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -379,7 +366,6 @@
         }
     }
 
-    // Procesar resultados de los voluntarios
     function procesarVoluntario(num) {
         detenerAudio();
         lblEstado.innerHTML = `Calculando Voluntario ${num}...`;
@@ -400,8 +386,7 @@
     btnVol1.addEventListener('click', () => procesarVoluntario(1));
     btnVol2.addEventListener('click', () => procesarVoluntario(2));
 
-    // Inicializar renderizado gráfico inicial estable (12000 Hz)
-    actualizarPerillaPorFrecuencia(frecuenciaActual);
+    redibujarPerillaDesdeHz(frecuenciaActual);
 </script>
 </body>
 </html>
