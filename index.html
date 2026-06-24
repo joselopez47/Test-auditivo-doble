@@ -293,21 +293,8 @@
 
         if (anguloAjustado <= 270) {
             let porcentaje = anguloAjustado / 270;
-            frecuenciaActual = 
-let fCalculada = Math.floor(F_MIN * Math.pow((F_MAX / F_MIN), porcentaje));
-
-// Si está muy cerca del mínimo (ej. menos de 25Hz), forzar a 20Hz
-if (fCalculada < 25) {
-    frecuenciaActual = 20;
-} 
-// Si está muy cerca del máximo (ej. más de 21950Hz), forzar a 22000Hz
-else if (fCalculada > 21950) {
-    frecuenciaActual = 22000;
-} 
-// En cualquier otro caso, usar el valor real calculado
-else {
-    frecuenciaActual = fCalculada;
-}
+            frecuenciaActual = Math.floor(F_MIN * Math.pow((F_MAX / F_MIN), porcentaje));
+            frecuenciaActual = Math.max(F_MIN, Math.min(F_MAX, frecuenciaActual));
 
             lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
             dibujarPerilla(anguloDeg);
