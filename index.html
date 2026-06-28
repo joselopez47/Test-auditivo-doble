@@ -17,7 +17,7 @@
         }
         .container {
             display: flex;
-            width: 800px;
+            width: 850px;
             height: 600px;
             background-color: #1D1D1D;
             border-radius: 15px;
@@ -25,7 +25,7 @@
             overflow: hidden;
         }
         .col-left {
-            flex: 1;
+            flex: 1.2;
             padding: 30px;
             display: flex;
             flex-direction: column;
@@ -33,7 +33,7 @@
             justify-content: center;
         }
         .col-right {
-            flex: 1;
+            flex: 0.8;
             background-color: #1E293B;
             padding: 30px;
             display: flex;
@@ -44,11 +44,66 @@
         h2 { font-size: 22px; margin-bottom: 5px; color: #F3F4F6; text-align: center;}
         p.subtitle { color: #9CA3AF; font-size: 12px; margin-bottom: 20px; text-align: center; }
         
-        #canvasPerilla {
-            background-color: #1D1D1D;
+        /* Contenedor del Canvas de la Onda (Osciloscopio) */
+        .wave-container {
+            width: 320px;
+            height: 120px;
+            background-color: #0F172A;
+            border: 2px solid #334155;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.6);
+        }
+        #canvasOnda {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Contenedor y diseño del Slider Moderno */
+        .slider-container {
+            width: 320px;
+            margin: 15px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .modern-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #374151;
+            outline: none;
+            transition: background 0.2s;
             cursor: pointer;
         }
-        
+        .modern-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: #3B82F6;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            transition: transform 0.1s;
+        }
+        .modern-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            background: #60A5FA;
+        }
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            color: #6B7280;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+
+        /* Contenedor del Display con Botones +/- */
         .freq-container {
             display: flex;
             align-items: center;
@@ -59,7 +114,7 @@
         .btn-step {
             background-color: #374151;
             color: #F3F4F6;
-            width: 60px;
+            width: 85px;
             padding: 8px 0;
             font-size: 12px;
             border-radius: 6px;
@@ -69,16 +124,43 @@
         }
         .btn-step:hover { background-color: #4B5563; }
         
+        /* Display editable */
+        .freq-wrapper {
+            min-width: 140px;
+            text-align: center;
+        }
         .freq-display {
             font-size: 24px;
             font-weight: bold;
             color: #3B82F6;
-            min-width: 130px;
-            text-align: center;
-            user-select: none;
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+            display: inline-block;
         }
+        .freq-display:hover {
+            background-color: #2D3748;
+        }
+        .freq-input {
+            font-size: 22px;
+            font-weight: bold;
+            color: #3B82F6;
+            background-color: #0F172A;
+            border: 2px solid #3B82F6;
+            border-radius: 6px;
+            width: 110px;
+            text-align: center;
+            outline: none;
+        }
+        .freq-input::-webkit-outer-spin-button,
+        .freq-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
         button {
-            width: 260px;
+            width: 320px;
             padding: 12px;
             font-weight: bold;
             border: none;
@@ -154,13 +236,27 @@
 <div class="container">
     <div class="col-left">
         <h2>Generador de Tonos Dinámico</h2>
-        <p class="subtitle">Arrastrá el mouse / dedo para sintonizar las frecuencias:</p>
-        <canvas id="canvasPerilla" width="250" height="250" style="touch-action: none; -webkit-user-select: none; user-select: none;"></canvas>
+        <p class="subtitle">Monitoreo de onda senoidal en tiempo real:</p>
+        
+        <div class="wave-container">
+            <canvas id="canvasOnda" width="320" height="120"></canvas>
+        </div>
+
+        <div class="slider-container">
+            <input type="range" id="sliderFrecuencia" class="modern-slider" min="20" max="22000" value="12000">
+            <div class="slider-labels">
+                <span>20 Hz</span>
+                <span>11000 Hz</span>
+                <span>22000 Hz</span>
+            </div>
+        </div>
         
         <div class="freq-container">
-            <button class="btn-step" id="btnMenos">Anterior</button>
-            <div class="freq-display" id="lblFrecuencia">12000 Hz</div>
-            <button class="btn-step" id="btnMas">Siguiente</button>
+            <button class="btn-step" id="btnMenos">Anterior (-100)</button>
+            <div class="freq-wrapper" id="freqWrapper">
+                <div class="freq-display" id="lblFrecuencia">12000 Hz</div>
+            </div>
+            <button class="btn-step" id="btnMas">Siguiente (+100)</button>
         </div>
         
         <button class="btn-audio" id="btnEscuchar">▶ Encender Tono Continuo</button>
@@ -171,10 +267,10 @@
         
         <div class="actions-container">
             <button class="btn-action" id="btnVol1">Voluntario 1<br>[ Sí lo escucho ]</button>
-            <button class="btn-action" id="btnVol2" style="background-color: #0EA5E9; hover: background-color: #0284C7;">Voluntario 2<br>[ Sí lo escucho ]</button>
+            <button class="btn-action" id="btnVol2" style="background-color: #0EA5E9;">Voluntario 2<br>[ Sí lo escucho ]</button>
         </div>
         
-        <div class="status-lbl" id="lblEstado">Encendé el tono y mové la perilla<br>para escanear tu oído.</div>
+        <div class="status-lbl" id="lblEstado">Encendé el tono y mové el slider<br>para escanear tu oído.</div>
         <div class="separator"></div>
         
         <div class="led-screen">
@@ -194,14 +290,17 @@
     let reproduciendo = false;
     let frecuenciaActual = 12000;
     
+    // Variables de Audio Context y Nodos analizados
     let audioCtx = null;
     let oscillator = null;
     let gainNode = null;
+    let analyser = null;
+    let bufferLength = 0;
+    let dataArray = null;
 
     const FRECUENCIAS_REFE = [20, 250, 8000, 12000, 15000, 16000, 17400, 19000, 20000, 22000];
     const EDADES_REFE      = [90.0, 80.0, 70.0, 50.0, 40.0, 30.0, 25.0, 22.0, 20.0, 18.0];
 
-    // Constantes de escala logarítmica/exponencial unificada
     const F_MIN = 20;
     const F_MAX = 22000;
 
@@ -218,16 +317,11 @@
         return 50;
     }
 
-    // Traduce con precisión milimétrica los Hz al ángulo visual exacto del Canvas
-    function redibujarPerillaDesdeHz(hz) {
-        let porcentaje = Math.log(hz / F_MIN) / Math.log(F_MAX / F_MIN);
-        let anguloAjustado = porcentaje * 270;
-        let anguloDeg = (anguloAjustado + 135) % 360;
-        dibujarPerilla(anguloDeg);
-    }
-
-    const canvas = document.getElementById('canvasPerilla');
-    const ctx = canvas.getContext('2d');
+    // Elementos del DOM
+    const canvasOnda = document.getElementById('canvasOnda');
+    const ctxOnda = canvasOnda.getContext('2d');
+    const slider = document.getElementById('sliderFrecuencia');
+    const freqWrapper = document.getElementById('freqWrapper');
     const lblFrecuencia = document.getElementById('lblFrecuencia');
     const btnEscuchar = document.getElementById('btnEscuchar');
     const btnVol1 = document.getElementById('btnVol1');
@@ -238,116 +332,135 @@
     const resVol1 = document.getElementById('resVol1');
     const resVol2 = document.getElementById('resVol2');
 
-    function dibujarPerilla(anguloDeg) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const cx = 125, cy = 125;
-        
-        ctx.beginPath(); ctx.arc(cx, cy, 90, 0, 2 * Math.PI); ctx.fillStyle = "#2D2D2D"; ctx.fill();
-        ctx.lineWidth = 4; ctx.strokeStyle = "#4B5563"; ctx.stroke();
-        ctx.beginPath(); ctx.arc(cx, cy, 75, 0, 2 * Math.PI); ctx.fillStyle = "#1F2937"; ctx.fill();
-
-        const rad = (anguloDeg * Math.PI) / 180;
-        const lx = cx + 70 * Math.cos(rad);
-        const ly = cy + 70 * Math.sin(rad);
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.lineTo(lx, ly);
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = "#3B82F6";
-        ctx.stroke();
-    }
-
-    // Audio Progresivo sin micro-cortes utilizando rampas exponenciales
+    // Audio Progresivo ultrasuave con rampas exponenciales
     function actualizarFrecuenciaAudio(hz) {
         if (oscillator && reproduciendo) {
-            // Evitamos saltos discretos limpiando eventos previos y aplicando una rampa ultrasuave en 0.03 segundos
             oscillator.frequency.cancelScheduledValues(audioCtx.currentTime);
-            oscillator.frequency.exponentialRampToValueAtTime(hz, audioCtx.currentTime + 0.03);
+            oscillator.frequency.exponentialRampToValueAtTime(hz, audioCtx.currentTime + 0.04);
         }
     }
 
-    function procesarMovimiento(e) {
-        const rect = canvas.getBoundingClientRect();
-        let clienteX, clienteY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clienteX = e.touches[0].clientX;
-            clienteY = e.touches[0].clientY;
-        } else {
-            clienteX = e.clientX;
-            clienteY = e.clientY;
-        }
-
-        const x = clienteX - rect.left;
-        const y = clienteY - rect.top;
-        
-        const cx = 125, cy = 125;
-        const dx = x - cx;
-        const dy = y - cy;
-
-        let anguloDeg = Math.atan2(dy, dx) * (180 / Math.PI);
-        if (anguloDeg < 0) anguloDeg += 360;
-
-        let anguloAjustado = (anguloDeg - 135 + 360) % 360;
-
-        if (anguloAjustado <= 270) {
-            let porcentaje = anguloAjustado / 270;
-            frecuenciaActual = Math.floor(F_MIN * Math.pow((F_MAX / F_MIN), porcentaje));
-            frecuenciaActual = Math.max(F_MIN, Math.min(F_MAX, frecuenciaActual));
-
-            lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
-            dibujarPerilla(anguloDeg);
-            actualizarFrecuenciaAudio(frecuenciaActual);
-        }
-    }
-
-    // Ajuste Fino Exponencial Constante (Evita descalibraciones en toda la curva gráfica)
-    // El paso de 1.05 incrementa/decrementa de forma proporcional y adaptativa según el rango
-    btnMenos.addEventListener('click', () => {
-        frecuenciaActual = Math.floor(frecuenciaActual / 1.05);
-        frecuenciaActual = Math.max(F_MIN, frecuenciaActual);
+    // Cambiar frecuencia globalmente y sincronizar slider + pantalla
+    function cambiarFrecuenciaGlobal(nuevaFreq) {
+        frecuenciaActual = Math.max(F_MIN, Math.min(F_MAX, nuevaFreq));
         lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
-        redibujarPerillaDesdeHz(frecuenciaActual);
+        slider.value = frecuenciaActual;
         actualizarFrecuenciaAudio(frecuenciaActual);
+    }
+
+    // Listener del Slider
+    slider.addEventListener('input', (e) => {
+        cambiarFrecuenciaGlobal(parseInt(e.target.value));
+    });
+
+    // Pasos lineales fijos de +/- 100 Hz
+    btnMenos.addEventListener('click', () => {
+        cambiarFrecuenciaGlobal(frecuenciaActual - 100);
     });
 
     btnMas.addEventListener('click', () => {
-        frecuenciaActual = Math.floor(frecuenciaActual * 1.05);
-        frecuenciaActual = Math.min(F_MAX, frecuenciaActual);
-        lblFrecuencia.innerText = `${frecuenciaActual} Hz`;
-        redibujarPerillaDesdeHz(frecuenciaActual);
-        actualizarFrecuenciaAudio(frecuenciaActual);
+        cambiarFrecuenciaGlobal(frecuenciaActual + 100);
     });
 
-    let activo = false;
-    canvas.addEventListener('mousedown', (e) => { activo = true; procesarMovimiento(e); });
-    window.addEventListener('mouseup', () => activo = false);
-    canvas.addEventListener('mousemove', (e) => { if(activo) { e.preventDefault(); procesarMovimiento(e); } });
-    canvas.addEventListener('click', (e) => { procesarMovimiento(e); });
-    
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
-    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); procesarMovimiento(e); }, {passive: false});
+    // Edición manual en caliente al hacer clic sobre los Hz
+    lblFrecuencia.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'freq-input';
+        input.value = frecuenciaActual;
+        input.min = F_MIN;
+        input.max = F_MAX;
 
+        freqWrapper.innerHTML = '';
+        freqWrapper.appendChild(input);
+        input.focus();
+        input.select();
+
+        function procesarEntradaManual() {
+            let valor = parseInt(input.value);
+            if (isNaN(valor)) valor = frecuenciaActual;
+            
+            freqWrapper.innerHTML = '';
+            freqWrapper.appendChild(lblFrecuencia);
+            
+            cambiarFrecuenciaGlobal(valor);
+        }
+
+        input.addEventListener('blur', () => { procesarEntradaManual(); });
+        input.addEventListener('keydown', (e) => { if (e.key === 'Enter') procesarEntradaManual(); });
+    });
+
+    // Bucle de renderizado para el osciloscopio gráfico (Canvas)
+    function dibujarOsciloscopio() {
+        requestAnimationFrame(dibujarOsciloscopio);
+
+        const width = canvasOnda.width;
+        const height = canvasOnda.height;
+
+        // Limpieza de pantalla con leve desenfoque para dar un efecto LED retroiluminado
+        ctxOnda.fillStyle = '#0F172A';
+        ctxOnda.fillRect(0, 0, width, height);
+
+        ctxOnda.lineWidth = 2.5;
+        ctxOnda.strokeStyle = reproduciendo ? '#10B981' : '#475569'; // Verde esmeralda si suena, gris si está apagado
+        ctxOnda.beginPath();
+
+        if (reproduciendo && analyser) {
+            // Si hay audio activo, leemos el buffer de ondas de tiempo real
+            analyser.getByteTimeDomainData(dataArray);
+
+            let sliceWidth = width / bufferLength;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+                let v = dataArray[i] / 128.0;
+                let y = (v * height) / 2;
+
+                if (i === 0) {
+                    ctxOnda.moveTo(x, y);
+                } else {
+                    ctxOnda.lineTo(x, y);
+                }
+                x += sliceWidth;
+            }
+        } else {
+            // Línea de base plana si el sonido está apagado
+            ctxOnda.moveTo(0, height / 2);
+            ctxOnda.lineTo(width, height / 2);
+        }
+
+        ctxOnda.lineTo(width, height / 2);
+        ctxOnda.stroke();
+    }
+
+    // Control de encendido/apagado del Tono Continuo
     btnEscuchar.addEventListener('click', () => {
         if (!reproduciendo) {
             if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             
             oscillator = audioCtx.createOscillator();
             gainNode = audioCtx.createGain();
+            analyser = audioCtx.createAnalyser(); // Inicializamos el analizador de espectro
+            
+            // Configuración del analizador
+            analyser.fftSize = 2048;
+            bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
             
             oscillator.type = 'sine';
             oscillator.frequency.setValueAtTime(frecuenciaActual, audioCtx.currentTime);
             gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
 
-            oscillator.connect(gainNode);
+            // Ruteo de nodos: Oscilador -> Analizador -> Volumen (Gain) -> Parlantes
+            oscillator.connect(analyser);
+            analyser.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             oscillator.start();
 
             reproduciendo = true;
             btnEscuchar.innerText = "■ Detener Tono";
             btnEscuchar.classList.add('active');
-            lblEstado.innerHTML = "Tono activo.<br>Girá la perilla para calibrar tu oído.";
+            lblEstado.innerHTML = "Tono activo.<br>Mové el slider para calibrar tu oído.";
             lblEstado.style.color = "#60A5FA";
         } else {
             detenerAudio();
@@ -386,7 +499,9 @@
     btnVol1.addEventListener('click', () => procesarVoluntario(1));
     btnVol2.addEventListener('click', () => procesarVoluntario(2));
 
-    redibujarPerillaDesdeHz(frecuenciaActual);
+    // Inicializar el bucle de renderizado gráfico de la onda
+    dibujarOsciloscopio();
+    cambiarFrecuenciaGlobal(frecuenciaActual);
 </script>
 </body>
 </html>
